@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Life Quest - Level Up</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
+  body {
+    margin: 0; 
+    font-family: 'Inter', sans-serif;
+    background-color: #121212;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 10px;
+    color: #81c784;
+    user-select: none;
+  }
+  #level-bar {
+    background: #2e2e2e;
+    border-radius: 12px;
+    overflow: hidden;
+    height: 20px;
+    margin: 10px auto 25px;
+    max-width: 350px;
+    box-shadow: inset 0 0 5px #000;
+  }
+  #level-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4caf50, #81c784);
+    transition: width 0.5s ease;
+  }
+  #level-info {
+    text-align: center;
+    margin-bottom: 25px;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 30px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 90vw;
+  }
+  li {
+    background: #1e1e1e;
+    margin-bottom: 12px;
+    padding: 15px 20px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.6);
+    transition: background 0.3s;
+  }
+  li.completed {
+    background: #388e3c;
+    text-decoration: line-through;
+    color: #c8e6c9;
+    box-shadow: 0 2px 8px #2e7d32;
+  }
+  li:hover:not(.completed) {
+    background: #2c2c2c;
+  }
+  .xp {
+    font-weight: 700;
+    color: #81c784;
+    margin-left: 12px;
+    user-select: none;
+  }
+  #total-xp {
+    text-align: center;
+    font-weight: 700;
+    color: #a5d6a7;
+    margin-bottom: 30px;
+    font-size: 1.2rem;
+    user-select: none;
+  }
+  #powerups {
+    max-width: 400px;
+    margin: 0 auto 40px;
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .powerup-btn {
+    background: #333;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 30px;
+    color: #81c784;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 2px 8px #000;
+    transition: background 0.3s;
+  }
+  .powerup-btn:hover {
+    background: #4caf50;
+    color: #121212;
+  }
+  #notification-permission {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  #notification-permission button {
+    background: #4caf50;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    color: #121212;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 2px 8px #000;
+    transition: background 0.3s;
+  }
+  #notification-permission button:hover {
+    background: #81c784;
+  }
+  @media (max-width: 480px) {
+    body {
+      padding: 15px;
+    }
+    li {
+      padding: 12px 15px;
+    }
+    #powerups {
+      gap: 10px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>Life Quest - Level Up</h1>
+
+<div id="level-info">Level 1 - 0 / 100 XP</div>
+<div id="level-bar"><div id="level-fill"></div></div>
+
+<ul id="quest-list"></ul>
+
+<div id="total-xp">Totaal XP: 0</div>
+
+<div id="powerups">
+  <button class="powerup-btn" id="focusPowerup">Focus Potion (+50 XP)</button>
+  <button class="powerup-btn" id="energyPowerup">Energy Boost (+30 XP)</button>
+</div>
+
+<div id="notification-permission">
+  <button id="enableNotifBtn">Activeer Dagelijkse Herinnering</button>
+</div>
+
+<script>
+  // Data
+  const quests = [
+    { name: "School Mastery", xp: 50, completed: false },
+    { name: "Project Builder", xp: 100, completed: false },
+    { name: "Sport Champion", xp: 30, completed: false },
+    { name: "Time Management", xp: 40, completed: false },
+    { name: "Autorijles Challenge", xp: 60, completed: false },
+    { name: "Financial Growth", xp: 80, completed: false }
+  ];
+
+  // State
+  let totalXP = 0;
+  let level = 1;
+  const xpToNextLevel = 100;
+
+  // DOM Elements
+  const questList = document.getElementById('quest-list');
+  const totalXPDiv = document.getElementById('total-xp');
+  const levelInfo = document.getElementById('level-info');
+  const levelFill = document.getElementById('level-fill');
+  const notificationPermDiv = document.getElementById('notification-permission');
+  const enableNotifBtn = document.getElementById('enableNotifBtn');
+
+  // Functions
+  function renderQuests() {
+    questList.innerHTML = '';
+    quests.forEach((q, i) => {
+      const li = document.createElement('li');
+      li.textContent = q.name;
+      if (q.completed) li.classList.add('completed');
+
+      const xpSpan = document.createElement('span');
+      xpSpan.className = 'xp';
+      xpSpan.textContent = `+${q.xp} XP`;
+      li.appendChild(xpSpan);
+
+      li.addEventListener('click', () => {
+        quests[i].completed = !quests[i].completed;
+        saveProgress();
+        calculateXP();
+        renderQuests();
+        renderLevel();
+      });
+
+      questList.appendChild(li);
+    });
+  }
+
+  function calculateXP() {
+    totalXP = quests.filter(q => q.completed).reduce((acc, q) => acc + q.xp, 0);
+    totalXP += powerupXP; // Include XP from power-ups
+    totalXPDiv.textContent = `Totaal XP: ${totalXP}`;
+  }
+
+  function renderLevel() {
+    level = Math.floor(totalXP / xpToNextLevel) + 1;
+    let xpInCurrentLevel = totalXP % xpToNextLevel;
+    levelInfo.textContent = `Level ${level} - ${xpInCurrentLevel} / ${xpToNextLevel} XP`;
+    let progressPercent = (xpInCurrentLevel / xpToNextLevel) * 100;
+    levelFill.style.width = progressPercent + '%';
+  }
+
+  // Power-ups
+  let powerupXP = 0;
+
+  const focusPowerupBtn = document.getElementById('focusPowerup');
+  const energyPowerupBtn = document.getElementById('energyPowerup');
+
+  focusPowerupBtn.addEventListener('click', () => {
+    if (!quests.some(q => q.completed === false)) {
+      alert("Alle quests voltooid! Geen power-ups nodig.");
+      return;
+    }
+    powerupXP += 50;
+    alert("Focus Potion gebruikt! +50 XP");
+    calculateXP();
+    renderLevel();
+    saveProgress();
+  });
+
+  energyPowerupBtn.addEventListener('click', () => {
+    if (!quests.some(q => q.completed === false)) {
+      alert("Alle quests voltooid! Geen power-ups nodig.");
+      return;
+    }
+    powerupXP += 30;
+    alert("Energy Boost gebruikt! +30 XP");
+    calculateXP();
+    renderLevel();
+    saveProgress();
+  });
+
+  // Storage
+  function saveProgress() {
+    const data = {
+      quests,
+      powerupXP
+    };
+    localStorage.setItem('lifeQuestData', JSON.stringify(data));
+  }
+
+  function loadProgress() {
+    const saved = localStorage.getItem('lifeQuestData');
+    if (saved) {
+      const data = JSON.parse(saved);
+      for (let i = 0; i < quests.length; i++) {
+        quests[i].completed = data.quests[i]?.completed || false;
+      }
+      powerupXP = data.powerupXP || 0;
+    }
+  }
+
+  // Notifications
+  enableNotifBtn.addEventListener('click', () => {
+    if (!('Notification' in window)) {
+      alert('Deze browser ondersteunt geen meldingen.');
+      return;
+    }
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        alert('Notificaties ingeschakeld! Je ontvangt dagelijks een herinnering.');
+        scheduleDailyNotification();
+        notificationPermDiv.style.display = 'none';
+      } else {
+        alert('Notificaties geweigerd.');
+      }
+    });
+  });
+
+  function scheduleDailyNotification() {
+    // Simpele herinnering (werkt alleen als browser open is)
+    setInterval(() => {
+      new Notification('Life Quest', {
+        body: 'Tijd om je quests te voltooien en XP te verdienen! 💪',
+        icon: 'https://cdn-icons-png.flaticon.com/512/616/616408.png'
+      });
+    }, 86400000); // 24 uur in ms
+  }
+
+  // Start
+  loadProgress();
+  renderQuests();
+  calculateXP();
+  renderLevel();
+
+</script>
+
+</body>
+</html>
